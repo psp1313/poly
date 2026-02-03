@@ -15,6 +15,7 @@ import sys
 import os
 import signal
 import datetime
+from typing import Optional
 
 # Add parent directory (project root) to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
