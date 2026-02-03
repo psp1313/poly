@@ -160,7 +160,7 @@ class ChainlinkPriceFeed:
             logger.error(f"On-chain oracle error: {e}")
             # Rotate RPC on error
             self._rotate_rpc()
-            return None as e
+            return None
 
     def _rotate_rpc(self):
         """Switch to next RPC in list"""
