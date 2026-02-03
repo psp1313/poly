@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
-    startCommand: PYTHONPATH=. python src/main.py
+    startCommand: python -m src.main
     env:
       - key: PYTHON_VERSION
         value: "3.11.8"
