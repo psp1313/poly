@@ -80,6 +80,10 @@ class ArbitrageBot:
         # Execution manager
         self.exec_manager = ExecutionManager(self.client)
         
+        # Error tracking for notification suppression
+        self.last_error_msg = ""
+        self.last_notification_time = datetime.datetime.min
+        
         logger.info("All components initialized")
     
     def _init_client(self) -> ClobClient:
@@ -197,7 +201,18 @@ class ArbitrageBot:
                 
         except Exception as e:
             logger.error(f"Scan cycle error: {e}")
-            await self.notifier.notify_error(str(e))
+            
+            # Error suppression logic
+            current_error = str(e)
+            now = datetime.datetime.now()
+            
+            # Send notification only if error is new or 30 mins have passed
+            if (current_error != self.last_error_msg) or \
+               (now - self.last_notification_time > datetime.timedelta(minutes=30)):
+                
+                await self.notifier.notify_error(f"{current_error} (Suppressed repeating errors)")
+                self.last_error_msg = current_error
+                self.last_notification_time = now
     
     def _extract_strike_price(self, question: str) -> float:
         """Extract strike price from question string (e.g. 'Will BTC be > $95,000?')"""
