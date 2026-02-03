@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: polymarket-arbitrage-bot
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python src/main.py
+    envVars:
+      - key: POLY_API_KEY
+        sync: false
+      - key: POLY_API_SECRET
+        sync: false
+      - key: POLY_API_PASSPHRASE
+        sync: false
+      - key: POLY_PRIVATE_KEY
+        sync: false
+      - key: POLY_CHAIN_ID
+        value: 137
+      - key: POLY_SIG_TYPE
+        value: 2
+      - key: POLY_FUNDER_ADDRESS
+        sync: false
+      - key: TESTING_MODE
+        value: True
+      - key: MAX_POSITION_TESTING
+        value: 3.0
+      - key: MIN_PROFIT_THRESHOLD
+        value: 0.04
+      - key: MAX_SLIPPAGE
+        value: 0.025
+      - key: DAILY_LOSS_LIMIT
+        value: 5.0
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        value: 6787842336
