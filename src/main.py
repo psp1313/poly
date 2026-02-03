@@ -81,8 +81,7 @@ class ArbitrageBot:
             creds = ApiCreds(
                 api_key=POLY_API_KEY,
                 api_secret=POLY_API_SECRET,
-                api_passphrase=POLY_API_PASSPHRASE,
-                private_key=POLY_PRIVATE_KEY
+                api_passphrase=POLY_API_PASSPHRASE
             )
             
             # Initialize client
