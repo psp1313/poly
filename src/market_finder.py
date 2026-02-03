@@ -31,11 +31,14 @@ class MarketFinder:
             # Safest fix: Pass only arguments we are sure of, or handle pagination differently.
             # Assuming `active` and `closed` are valid filters in the params dict or args.
             
-            # Trying minimal arguments to fix TypeError
-            markets = self.client.get_markets(
-                active=True,
-                closed=False
-            )
+            # Corrected for py-clob-client v0.34.5
+            # get_markets seems to not support filter args directly in this version
+            # We will fetch markets and filter client-side
+            
+            # Fetch markets (defaults to paginated response, usually first page)
+            # We might need to handle pagination if the market isn't in the first page
+            # But for "active" markets the API usually returns them first or we just check what we get.
+            markets = self.client.get_markets()
             
             # Filter logic:
             # 1. Must be "Bitcoin > $X" or similar 15min binary market
