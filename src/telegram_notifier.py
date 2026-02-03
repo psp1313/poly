@@ -60,9 +60,14 @@ class TelegramNotifier:
     async def notify_opportunity(self, opportunity: Dict):
         """Notify arbitrage opportunity detected"""
         message = f"🔍 *Opportunity Detected!*\n\n"
-        message += f"Type: {opportunity.get('type', 'unknown')}\n"
+        
+        # Sanitize to avoid Markdown errors
+        opp_type = str(opportunity.get('type', 'unknown')).replace('_', '-')
+        mkt_id = str(opportunity.get('market_id', 'unknown')).replace('_', '-')
+        
+        message += f"Type: {opp_type}\n"
         message += f"Profit: {opportunity.get('profit_pct', 0)*100:.2f}%\n"
-        message += f"Market: {opportunity.get('market_id', 'unknown')}\n"
+        message += f"Market: {mkt_id}\n"
         await self.send_message(message)
     
     async def notify_trade_entry(self, trade: Dict):
@@ -103,7 +108,9 @@ class TelegramNotifier:
     
     async def notify_error(self, error: str):
         """Notify error"""
-        message = f"⚠️ *ERROR*\n\n{error}"
+        # Sanitize error text
+        safe_error = str(error).replace('_', '-')
+        message = f"⚠️ *ERROR*\n\n{safe_error}"
         await self.send_message(message)
     
     async def notify_daily_summary(self, summary: Dict):
