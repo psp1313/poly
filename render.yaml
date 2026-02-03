@@ -1,11 +1,13 @@
 services:
   - type: web
     name: polymarket-arbitrage-bot
-    env: python
-    region: oregon
+    runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: python src/main.py
+    env:
+      - key: PYTHON_VERSION
+        value: "3.11.8"
     envVars:
       - key: POLY_API_KEY
         sync: false
