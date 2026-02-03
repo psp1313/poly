@@ -60,8 +60,13 @@ class ArbitrageBot:
         # Polymarket client
         self.client = self._init_client()
         
-        # Price oracle (Chainlink + Binance)
-        self.oracle = PriceOracle()
+
+        # Real Data Components
+        from market_finder import MarketFinder
+        from websocket_manager import WebSocketManager
+        
+        self.market_finder = MarketFinder(self.client)
+        self.ws_manager = WebSocketManager()
         
         # Arbitrage engine
         self.arb_engine = ArbitrageEngine(
@@ -105,6 +110,9 @@ class ArbitrageBot:
         """Start the bot"""
         self.running = True
         
+        # Start WebSocket connection
+        await self.ws_manager.connect()
+        
         # Send startup notification
         await self.notifier.notify_startup()
         
@@ -114,7 +122,7 @@ class ArbitrageBot:
             # Main loop
             while self.running:
                 await self.scan_cycle()
-                await asyncio.sleep(10)  # Scan every 10 seconds
+                await asyncio.sleep(5)  # Scan every 5 seconds (faster with real data)
                 
         except KeyboardInterrupt:
             logger.info("Shutdown requested")
@@ -132,20 +140,35 @@ class ArbitrageBot:
                 logger.warning("Failed to get Chainlink BTC price")
                 return
             
-            # Get active market
-            market_id, start_price = self._get_active_market()
+            # Get active market via Market Finder
+            market_data = self._get_active_market()
             
-            if not market_id:
-                logger.debug("No active market found")
+            if not market_data:
+                logger.debug("No active BTC market found")
                 return
             
-            # Get order book (placeholder - needs WebSocket integration)
-            order_book = await self._get_order_book(market_id)
+            market_id = market_data["market_id"]
+            
+            # Ensure we are subscribed to this market's tokens
+            token_ids = [market_data["up_token_id"], market_data["down_token_id"]]
+            if self.ws_manager.token_ids != token_ids:
+                logger.info(f"Switching subscriptions to new market: {market_id}")
+                await self.ws_manager.subscribe(token_ids)
+                await asyncio.sleep(1) # Wait for book to populate
+            
+            # Get order book from WebSocket Manager
+            order_book = await self._get_order_book(market_id, token_ids)
             
             if not order_book:
                 return
             
             # Scan for opportunities
+            # Note: We need start_price. Market Finder might need to scrape/infer it.
+            # For now, approximate or assume placeholder until MarketFinder is robust.
+            # Market Finder returns 'question' which might contain "$95000".
+            # Let's extract it or use a fallback.
+            start_price = self._extract_strike_price(market_data["question"])
+            
             opportunities = self.arb_engine.scan_opportunities(
                 order_book=order_book,
                 chainlink_btc=chainlink_btc,
@@ -173,46 +196,37 @@ class ArbitrageBot:
             logger.error(f"Scan cycle error: {e}")
             await self.notifier.notify_error(str(e))
     
-    def _get_active_market(self) -> tuple:
-        """
-        Get current active btc-updown-15m market
-        
-        Returns:
-            (market_id, start_price) or (None, None)
-        """
+    def _extract_strike_price(self, question: str) -> float:
+        """Extract strike price from question string (e.g. 'Will BTC be > $95,000?')"""
         try:
-            # Calculate current 15-min interval
-            now = datetime.datetime.now(datetime.timezone.utc)
-            base = now.replace(second=0, microsecond=0)
-            minutes_to_remove = base.minute % 15
-            current_mark = base - datetime.timedelta(minutes=minutes_to_remove)
-            ts = int(current_mark.timestamp())
-            
-            market_id = f"btc-updown-15m-{ts}"
-            
-            # For MVP, use cached Chainlink price as start
-            # TODO: Query actual market start price from Polymarket
-            start_price = 76500.0  # Placeholder
-            
-            return market_id, start_price
-            
-        except Exception as e:
-            logger.error(f"Error getting active market: {e}")
-            return None, None
+            # Simple regex logic or string splitting
+            # "Will Bitcoin be > $95,000 on ...?"
+            import re
+            match = re.search(r'\$([\d,]+)', question)
+            if match:
+                return float(match.group(1).replace(',', ''))
+            return 100000.0 # Fallback safety
+        except:
+            return 100000.0
+
+    def _get_active_market(self) -> Optional[dict]:
+        """Get active market from MarketFinder"""
+        return self.market_finder.find_active_btc_market()
     
-    async def _get_order_book(self, market_id: str) -> dict:
-        """
-        Get order book for market
+    async def _get_order_book(self, market_id: str, token_ids: list) -> Optional[dict]:
+        """Get combined order book from WebSocket Manager"""
+        # We need to combine Up and Down token books into one structure for the engine
+        up_book = self.ws_manager.get_order_book(token_ids[0])
+        down_book = self.ws_manager.get_order_book(token_ids[1])
         
-        For MVP, returns placeholder data.
-        TODO: Integrate with WebSocket feed manager
-        """
-        # Placeholder
+        if not up_book or not down_book:
+            return None
+            
         return {
-            "up_asks": [{"price": 0.50, "size": 100}],
-            "up_bids": [{"price": 0.48, "size": 100}],
-            "down_asks": [{"price": 0.45, "size": 100}],
-            "down_bids": [{"price": 0.43, "size": 100}]
+            "up_asks": up_book["asks"],
+            "up_bids": up_book["bids"],
+            "down_asks": down_book["asks"],
+            "down_bids": down_book["bids"]
         }
     
     async def _execute_opportunity(self, opportunity):
