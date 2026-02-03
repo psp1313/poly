@@ -16,8 +16,8 @@ import os
 import signal
 import datetime
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add parent directory (project root) to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.settings import (
     POLY_API_KEY, POLY_API_SECRET, POLY_API_PASSPHRASE,
