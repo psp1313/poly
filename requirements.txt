@@ -2,8 +2,8 @@ python-dotenv==1.0.0
 websockets==12.0
 asyncio==3.4.3
 py-clob-client>=0.20.0
-numpy==1.26.2
-pandas==2.1.4
+numpy>=1.26.0
+pandas>=2.2.0
 aiohttp==3.9.1
 requests==2.31.0
 web3==6.11.3
