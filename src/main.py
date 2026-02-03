@@ -61,6 +61,8 @@ class ArbitrageBot:
         # Polymarket client
         self.client = self._init_client()
         
+        # Price oracle (Chainlink + Binance)
+        self.oracle = PriceOracle()
 
         # Real Data Components
         from market_finder import MarketFinder
