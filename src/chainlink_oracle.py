@@ -33,9 +33,18 @@ class ChainlinkPriceFeed:
     # Data Streams API (if available)
     DATA_STREAMS_URL = "https://api.chain.link/v1/streams/btc-usd"
     
-    def __init__(self, polygon_rpc: str = "https://polygon-rpc.com"):
-        self.polygon_rpc = polygon_rpc
-        self.w3 = Web3(Web3.HTTPProvider(polygon_rpc))
+    def __init__(self, polygon_rpc_list: list = None):
+        if polygon_rpc_list is None:
+            self.rpcs = [
+                "https://polygon-bor-rpc.publicnode.com",
+                "https://polygon.drpc.org",
+                "https://polygon-rpc.com"
+            ]
+        else:
+            self.rpcs = polygon_rpc_list
+            
+        self.current_rpc_index = 0
+        self.w3 = Web3(Web3.HTTPProvider(self.rpcs[0]))
         
         # Chainlink aggregator ABI (minimal)
         self.aggregator_abi = [
@@ -149,7 +158,22 @@ class ChainlinkPriceFeed:
             
         except Exception as e:
             logger.error(f"On-chain oracle error: {e}")
-            return None
+            # Rotate RPC on error
+            self._rotate_rpc()
+            return None as e
+
+    def _rotate_rpc(self):
+        """Switch to next RPC in list"""
+        self.current_rpc_index = (self.current_rpc_index + 1) % len(self.rpcs)
+        new_rpc = self.rpcs[self.current_rpc_index]
+        logger.info(f"Rotating to RPC: {new_rpc}")
+        self.w3 = Web3(Web3.HTTPProvider(new_rpc))
+        
+        # Re-initialize contract
+        self.contract = self.w3.eth.contract(
+            address=Web3.to_checksum_address(self.CHAINLINK_BTC_USD_POLYGON),
+            abi=self.aggregator_abi
+        )
     
     async def get_price_at_timestamp(self, timestamp: int) -> Optional[float]:
         """

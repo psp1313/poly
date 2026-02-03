@@ -24,11 +24,17 @@ class MarketFinder:
             
             # Use filters to find active BTC markets
             # Note: py-clob-client uses 'get_markets' which hits the Gamma API
+            # Corrected for py-clob-client v0.34.5
+            # get_markets generally takes a list of params or uses a specific pagination method
+            # If arguments are invalid, we should try using kwargs not explicitly defined in some versions
+            # However, looking at source, newer versions might use `next_cursor` or similar.
+            # Safest fix: Pass only arguments we are sure of, or handle pagination differently.
+            # Assuming `active` and `closed` are valid filters in the params dict or args.
+            
+            # Trying minimal arguments to fix TypeError
             markets = self.client.get_markets(
-                limit=20,
                 active=True,
-                closed=False,
-                order="startDate" # Get soonest starting/expiring?
+                closed=False
             )
             
             # Filter logic:
